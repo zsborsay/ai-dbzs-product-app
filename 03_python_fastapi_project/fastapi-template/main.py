@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
 from database import Product, create_tables, get_db
 from fastapi.middleware.cors import CORSMiddleware
-
+from cart import router as cart_router
 
 
 class ProductCreate(BaseModel):
@@ -114,7 +114,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.include_router(cart_router)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -48,6 +48,9 @@
                 <img src="/assets/icons/icon-delete.png" alt="delete" style="width:28px;height:28px;vertical-align:middle;display:inline-block;" />
               </span>
             </button>
+            <button class="action-btn plus" :disabled="product.stock === 0" @click="addToCart(product)">
+              <span class="action-icon" style="font-size:20px; font-weight:bold; color:#030213;">+</span>
+            </button>
           </div>
         </div>
       </div>
@@ -56,24 +59,33 @@
     <ProductForm v-if="showAddProduct" @close="showAddProduct = false" @created="onProductCreated" />
     <ProductForm v-if="editingProduct" :product="editingProduct" @close="editingProduct = null" @updated="onProductUpdated" />
     <DeleteProductDialog v-if="deletingProduct" :product="deletingProduct" @close="deletingProduct = null" @deleted="onProductDeleted" />
+    <MiniCartPanel :cartItems="cartItems" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useProductsApi } from '~/composables/useProductsApi'
+import { useCartApi } from '~/composables/useCartApi'
 import ProductDetailsDialog from './ProductDetailsDialog.vue'
 import ProductForm from './ProductForm.vue'
 import DeleteProductDialog from './DeleteProductDialog.vue'
+import MiniCartPanel from './MiniCartPanel.vue'
 
 const { products, loading, fetchProducts } = useProductsApi()
+const { cartItems, fetchCart, addToCart: addToCartApi, error: cartError } = useCartApi()
+
 const selectedProduct = ref(null)
 const showAddProduct = ref(false)
 const editingProduct = ref(null)
 const deletingProduct = ref(null)
 const search = ref("")
 
-onMounted(fetchProducts)
+// Load cart from localStorage on mount
+onMounted(() => {
+  fetchProducts()
+  fetchCart()
+})
 
 const filteredProducts = computed(() => {
   if (!search.value) return products.value
@@ -103,6 +115,21 @@ function onProductUpdated() {
 function onProductDeleted() {
   deletingProduct.value = null
   fetchProducts()
+}
+
+async function addToCart(product) {
+  if (product.stock === 0) return;
+  try {
+    await addToCartApi(product.id, 1)
+    await fetchProducts()
+    await fetchCart()
+  } catch (e) {
+    if (e.response && e.response.status === 409) {
+      alert('Not enough stock!')
+    } else {
+      alert('Error adding to cart')
+    }
+  }
 }
 </script>
 
@@ -275,11 +302,21 @@ function onProductDeleted() {
   color: #fff;
   padding: 0 12px;
 }
+.action-btn.plus {
+  background: #007BFF;
+  border: none;
+  color: #fff;
+  padding: 0 12px;
+}
 .action-btn:hover {
   background: #F3F3F5;
 }
 .action-btn.delete:hover {
   background: #b3122f;
+}
+.action-btn.plus:disabled {
+  background: #A0A0A0;
+  cursor: not-allowed;
 }
 .action-text {
   font-family: Inter, sans-serif;
